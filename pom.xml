@@ -37,6 +37,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>solcJ-all-0.4.25</groupId>

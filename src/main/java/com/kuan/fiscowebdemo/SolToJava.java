@@ -6,9 +6,16 @@ import org.fisco.bcos.web3j.solidity.compiler.CompilationResult;
 import org.fisco.bcos.web3j.solidity.compiler.SolidityCompiler;
 import org.fisco.bcos.web3j.tx.txdecode.CompileSolidityException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Base64;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import static org.fisco.bcos.web3j.solidity.compiler.SolidityCompiler.Options.ABI;
 import static org.fisco.bcos.web3j.solidity.compiler.SolidityCompiler.Options.BIN;
@@ -29,8 +36,83 @@ public class SolToJava {
 
     public static final String CLASS_PATH = JAVA_PATH+"classess/";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        testCompile();
+//        test2Java();
+    }
 
+    public static void testCompile() throws IOException {
+        String filePath = "D:\\JavaProject\\fiscowebdemo\\contracts\\solidity\\HelloWorld.sol";
+        byte[] buffer;
+        File file = new File(filePath);
+        FileInputStream fis = new FileInputStream(file);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(fis.available());
+        byte[] bytes = new byte[fis.available()];
+        int temp;
+        while ((temp = fis.read(bytes)) != -1) {
+        baos.write(bytes, 0, temp);
+        }
+        fis.close();
+        baos.close();
+        buffer = baos.toByteArray();
+
+
+        String contractName = "HelloWorld";
+
+        String sourceBase64 = Base64.getEncoder().encodeToString(buffer);
+        SolToJava solToJava = new SolToJava();
+        RspContractCompile rspContractCompile = solToJava.contractCompile(contractName,sourceBase64);
+        System.out.println(rspContractCompile.toString());
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public class RspContractCompile {
+        private String contractName;
+        private String contractAbi;
+        private String contractBin;
+        private String errors;
+    }
+
+    private static final String BASE_FILE_PATH = File.separator + "temp" + File.separator;
+    private static final String CONTRACT_FILE_TEMP = BASE_FILE_PATH + "%1s.sol";
+    /**
+     * compile contract.
+     */
+    public  RspContractCompile contractCompile(String contractName, String sourceBase64) {
+        File contractFile = null;
+        try {
+            // decode
+            byte[] contractSourceByteArr = Base64.getDecoder().decode(sourceBase64);
+            String contractFilePath = String.format(CONTRACT_FILE_TEMP, contractName);
+            // save contract to file
+            contractFile = new File(contractFilePath);
+            FileUtils.writeByteArrayToFile(contractFile, contractSourceByteArr);
+            // compile
+            SolidityCompiler.Result res =
+                    SolidityCompiler.compile(contractFile, true, ABI, BIN, INTERFACE, METADATA);
+            if ("".equals(res.output)) {
+                System.out.println("contractCompile error"+res.errors);
+            }
+            // compile result
+            CompilationResult result = CompilationResult.parse(res.output);
+            CompilationResult.ContractMetadata meta = result.getContract(contractName);
+            RspContractCompile compileResult =
+                    new RspContractCompile(contractName, meta.abi, meta.bin, res.errors);
+            return compileResult;
+        } catch (Exception ex) {
+            System.out.println("contractCompile error" + ex);
+            return null;
+        } finally {
+            if (contractFile != null) {
+                contractFile.deleteOnExit();
+            }
+        }
+
+    }
+
+    public static void test2Java(){
         String solName = "HelloWorld.sol";
 
         File solFileList = new File(SOLIDITY_PATH);
